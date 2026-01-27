@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type CandleRow = {
   date_utc: string;
@@ -130,7 +130,7 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
     byDate.set(key, r);
   }
 
-  const cells: JSX.Element[] = [];
+  const cells: React.ReactNode[] = [];
 
   for (let i = 0; i < firstWeekdayMon0; i++) {
     cells.push(<div key={`pad-${i}`} style={styles.padCell} />);

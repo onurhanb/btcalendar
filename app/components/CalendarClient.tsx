@@ -21,13 +21,23 @@ function monthLabel(year: number, month: number) {
 }
 
 function weekdayLabel(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleString("en-US", { weekday: "short" });
+  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleString("en-US", {
+    weekday: "short",
+  });
 }
 
 function fmt(v: string | number) {
   const n = Number(v);
   if (!isFinite(n)) return String(v);
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function todayKeyUTC() {
+  const n = new Date();
+  const y = n.getUTCFullYear();
+  const m = String(n.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(n.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export default function CalendarClient() {
@@ -48,7 +58,9 @@ export default function CalendarClient() {
     (async () => {
       setLoading(true);
       try {
-        const r = await fetch(`/api/candles?year=${year}&month=${month}`, { cache: "no-store" });
+        const r = await fetch(`/api/candles?year=${year}&month=${month}`, {
+          cache: "no-store",
+        });
         const j = await r.json();
         if (!cancelled) setRows(Array.isArray(j.days) ? j.days : []);
       } finally {
@@ -82,19 +94,35 @@ export default function CalendarClient() {
   return (
     <section style={{ marginTop: 14 }}>
       <div style={styles.navRow}>
-        <button onClick={prev} style={styles.navBtn}>‹ Prev</button>
+        <button onClick={prev} style={styles.navBtn}>
+          ‹ Prev
+        </button>
 
         <div style={styles.selectGroup}>
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={styles.select}>
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            style={styles.select}
+          >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
-                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", { month: "long" })}
+                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", {
+                  month: "long",
+                })}
               </option>
             ))}
           </select>
 
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={styles.select}>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            style={styles.select}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -102,7 +130,7 @@ export default function CalendarClient() {
           onClick={next}
           style={{
             ...styles.navBtn,
-            opacity: (year === initial.year && month === initial.month) ? 0.45 : 1
+            opacity: year === initial.year && month === initial.month ? 0.45 : 1,
           }}
         >
           Next ›
@@ -119,7 +147,15 @@ export default function CalendarClient() {
   );
 }
 
-function CalendarGrid({ year, month, rows }: { year: number; month: number; rows: CandleRow[] }) {
+function CalendarGrid({
+  year,
+  month,
+  rows,
+}: {
+  year: number;
+  month: number;
+  rows: CandleRow[];
+}) {
   const first = new Date(Date.UTC(year, month - 1, 1));
   const firstWeekdayMon0 = (first.getUTCDay() + 6) % 7; // Mon=0
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -130,6 +166,7 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
     byDate.set(key, r);
   }
 
+  const today = todayKeyUTC();
   const cells: React.ReactNode[] = [];
 
   for (let i = 0; i < firstWeekdayMon0; i++) {
@@ -142,32 +179,66 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
     const dateKey = `${year}-${mm}-${dd}`;
 
     const row = byDate.get(dateKey);
+    const isToday = dateKey === today;
+
     const pct = row ? Number(row.pct_change) : null;
     const isUp = pct !== null && pct >= 0;
 
-    const bg = pct === null
-      ? "rgba(255,255,255,0.03)"
-      : isUp ? "rgba(20, 83, 45, 0.45)" : "rgba(127, 29, 29, 0.45)";
+    // Backgrounds
+    const bg = row
+      ? isUp
+        ? "rgba(20, 83, 45, 0.45)"
+        : "rgba(127, 29, 29, 0.45)"
+      : isToday
+      ? "rgba(30, 64, 175, 0.25)" // today neutral
+      : "rgba(255,255,255,0.03)";
 
-    const border = pct === null
-      ? "rgba(255,255,255,0.10)"
-      : isUp ? "rgba(34, 197, 94, 0.35)" : "rgba(239, 68, 68, 0.35)";
+    const border = row
+      ? isUp
+        ? "rgba(34, 197, 94, 0.35)"
+        : "rgba(239, 68, 68, 0.35)"
+      : isToday
+      ? "rgba(96, 165, 250, 0.35)"
+      : "rgba(255,255,255,0.10)";
 
     const pctText = pct === null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
 
-    const label = `${d} ${new Date(Date.UTC(year, month - 1, d)).toLocaleString("en-US", { month: "short" })} - ${weekdayLabel(dateKey)}`;
+    const label = `${d} ${new Date(Date.UTC(year, month - 1, d)).toLocaleString(
+      "en-US",
+      { month: "short" }
+    )} - ${weekdayLabel(dateKey)}`;
 
     cells.push(
-      <div key={dateKey} style={{ ...styles.dayCell, background: bg, border: `1px solid ${border}` }}>
-        <div style={styles.dayLabel}>{label}</div>
+      <div
+        key={dateKey}
+        style={{
+          ...styles.dayCell,
+          background: bg,
+          border: `1px solid ${border}`,
+        }}
+      >
+        <div style={styles.dayLabelRow}>
+          <div style={styles.dayLabel}>{label}</div>
+          {isToday ? <div style={styles.todayPill}>TODAY</div> : null}
+        </div>
 
         {row ? (
           <>
             <div style={styles.line}>Open: {fmt(row.open)}</div>
             <div style={styles.line}>Close: {fmt(row.close)}</div>
-            <div style={{ ...styles.pct, color: pct !== null && pct < 0 ? "#fecaca" : "#bbf7d0" }}>
+            <div
+              style={{
+                ...styles.pct,
+                color: pct !== null && pct < 0 ? "#fecaca" : "#bbf7d0",
+              }}
+            >
               {pctText}
             </div>
+          </>
+        ) : isToday ? (
+          <>
+            <div style={styles.noDataTitle}>Today (in progress)</div>
+            <div style={styles.noDataHint}>Daily candle closes at 23:59 UTC</div>
           </>
         ) : (
           <div style={styles.noData}>No data</div>
@@ -180,13 +251,13 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
     <div>
       <div style={styles.weekRow}>
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
-          <div key={w} style={styles.weekHeader}>{w}</div>
+          <div key={w} style={styles.weekHeader}>
+            {w}
+          </div>
         ))}
       </div>
 
-      <div style={styles.grid}>
-        {cells}
-      </div>
+      <div style={styles.grid}>{cells}</div>
     </div>
   );
 }
@@ -224,7 +295,12 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  monthTitle: { fontSize: 28, fontWeight: 900, letterSpacing: 0.2, color: "#e7edf5" },
+  monthTitle: {
+    fontSize: 28,
+    fontWeight: 900,
+    letterSpacing: 0.2,
+    color: "#e7edf5",
+  },
   loading: { opacity: 0.7, color: "#e7edf5" },
   weekRow: {
     display: "grid",
@@ -250,8 +326,28 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 14,
     boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
   },
-  dayLabel: { fontWeight: 900, marginBottom: 10, color: "#e7edf5" },
+  dayLabelRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 10,
+  },
+  dayLabel: { fontWeight: 900, color: "#e7edf5" },
+  todayPill: {
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 0.6,
+    padding: "4px 8px",
+    borderRadius: 999,
+    border: "1px solid rgba(96, 165, 250, 0.35)",
+    background: "rgba(30, 64, 175, 0.20)",
+    color: "#bfdbfe",
+    whiteSpace: "nowrap",
+  },
   line: { opacity: 0.9, marginTop: 2, color: "#e7edf5" },
   pct: { marginTop: 10, fontWeight: 900, fontSize: 18 },
   noData: { opacity: 0.6, color: "#e7edf5" },
+  noDataTitle: { marginTop: 6, fontWeight: 900, color: "#bfdbfe" },
+  noDataHint: { marginTop: 6, opacity: 0.75, fontSize: 12, color: "#e7edf5" },
 };

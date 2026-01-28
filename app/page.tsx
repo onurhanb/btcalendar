@@ -1,4 +1,5 @@
 import CalendarClient from "./components/CalendarClient";
+import PriceCard from "./components/PriceCard";
 
 export default function Page() {
   return (
@@ -12,11 +13,7 @@ export default function Page() {
           </div>
         </div>
 
-        <div style={styles.priceCard}>
-          <div style={styles.priceCardTitle}>Bitcoin Current Price</div>
-          <div style={styles.priceValue}>—</div>
-          <div style={styles.priceUpdated}>Updated: —</div>
-        </div>
+        <PriceCard />
       </div>
 
       <CalendarClient />
@@ -32,9 +29,11 @@ const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: 24,
-    background: "radial-gradient(1200px 600px at 30% 0%, #1a2230 0%, #0b0f16 55%, #06080c 100%)",
+    background:
+      "radial-gradient(1200px 600px at 30% 0%, #1a2230 0%, #0b0f16 55%, #06080c 100%)",
     color: "#e7edf5",
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+    fontFamily:
+      "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
   },
   headerRow: {
     display: "flex",
@@ -58,17 +57,6 @@ const styles: Record<string, React.CSSProperties> = {
   brandText: { display: "flex", flexDirection: "column", gap: 4 },
   brandName: { fontSize: 22, fontWeight: 800, letterSpacing: 0.2 },
   brandMeta: { opacity: 0.75, fontSize: 13 },
-  priceCard: {
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.25)",
-    borderRadius: 14,
-    padding: 16,
-    minWidth: 320,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-  },
-  priceCardTitle: { fontWeight: 700, opacity: 0.9, marginBottom: 10 },
-  priceValue: { fontSize: 34, fontWeight: 900, letterSpacing: 0.2 },
-  priceUpdated: { opacity: 0.75, marginTop: 6, fontSize: 12 },
   footer: {
     opacity: 0.6,
     fontSize: 12,

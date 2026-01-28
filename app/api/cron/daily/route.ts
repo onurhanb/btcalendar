@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 
-const BINANCE_BASE = "https://api.binance.com";
 const SYMBOL = "BTCUSDT";
 const INTERVAL = "1d";
+
+// Binance bazı datacenter/IP bloklarında sorun çıkarabildiği için fallback domain’ler
+const BINANCE_BASES = [
+  "https://api.binance.com",
+  "https://data-api.binance.vision",
+  "https://data.binance.vision",
+];
 
 function mustEnv(name: string): string {
   const v = process.env[name];
@@ -16,42 +22,81 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+function utcMidnightMs(d: Date) {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0);
+}
+
+async function fetchKlineWithFallback(startUTC: number, endUTC: number) {
+  let lastErr: any = null;
+
+  for (const base of BINANCE_BASES) {
+    const url = new URL(`${base}/api/v3/klines`);
+    url.searchParams.set("symbol", SYMBOL);
+    url.searchParams.set("interval", INTERVAL);
+    url.searchParams.set("startTime", String(startUTC));
+    url.searchParams.set("endTime", String(endUTC));
+    url.searchParams.set("limit", "1");
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        "User-Agent": "btcalendar/1.0 (+cron)",
+        "Accept": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true as const, base, status: res.status, data };
+    }
+
+    const text = await res.text().catch(() => "");
+    lastErr = {
+      base,
+      status: res.status,
+      body: text.slice(0, 500),
+    };
+  }
+
+  return { ok: false as const, error: lastErr };
+}
+
 export async function GET(req: NextRequest) {
-  // --- Security: secret check ---
+  // --- Security: secret check via query param ---
   const secret = req.nextUrl.searchParams.get("secret");
   if (secret !== mustEnv("CRON_SECRET")) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // --- Calculate "yesterday" in UTC ---
+  // --- Calculate "yesterday" range in UTC ---
   const now = new Date();
-  const endUTC = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(), // today 00:00 UTC
-    0,
-    0,
-    0,
-    0
+  const todayMidnightUTC = utcMidnightMs(now);
+  const startUTC = todayMidnightUTC - 24 * 60 * 60 * 1000;
+  const endUTC = todayMidnightUTC;
+
+  const dateUTC = new Date(startUTC).toISOString().slice(0, 10);
+
+  // --- If already exists, return quickly (idempotent) ---
+  const exists = await pool.query(
+    `SELECT 1 FROM daily_candles WHERE date_utc = $1 LIMIT 1`,
+    [dateUTC]
   );
-  const startUTC = endUTC - 24 * 60 * 60 * 1000;
-
-  // --- Fetch Binance daily kline ---
-  const url = new URL(`${BINANCE_BASE}/api/v3/klines`);
-  url.searchParams.set("symbol", SYMBOL);
-  url.searchParams.set("interval", INTERVAL);
-  url.searchParams.set("startTime", String(startUTC));
-  url.searchParams.set("endTime", String(endUTC));
-  url.searchParams.set("limit", "1");
-
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    return NextResponse.json({ error: "binance error" }, { status: 500 });
+  if (exists.rowCount && exists.rowCount > 0) {
+    return NextResponse.json({ status: "ok", date: dateUTC, message: "already present" });
   }
 
-  const data = await res.json();
+  // --- Fetch Binance daily kline (with fallbacks) ---
+  const r = await fetchKlineWithFallback(startUTC, endUTC);
+  if (!r.ok) {
+    return NextResponse.json(
+      { error: "binance error", details: r.error, date: dateUTC },
+      { status: 500 }
+    );
+  }
+
+  const data = r.data;
   if (!Array.isArray(data) || data.length === 0) {
-    return NextResponse.json({ message: "no candle yet" });
+    return NextResponse.json({ status: "noop", message: "no candle yet", date: dateUTC, source: r.base });
   }
 
   const k = data[0];
@@ -59,8 +104,6 @@ export async function GET(req: NextRequest) {
   const close = Number(k[4]);
   const absChange = close - open;
   const pctChange = open === 0 ? 0 : (absChange / open) * 100;
-
-  const dateUTC = new Date(startUTC).toISOString().slice(0, 10);
 
   // --- Upsert into DB ---
   await pool.query(
@@ -74,7 +117,8 @@ export async function GET(req: NextRequest) {
       open = EXCLUDED.open,
       close = EXCLUDED.close,
       abs_change = EXCLUDED.abs_change,
-      pct_change = EXCLUDED.pct_change
+      pct_change = EXCLUDED.pct_change,
+      updated_at = NOW()
     `,
     [dateUTC, open, close, absChange, pctChange]
   );
@@ -84,6 +128,7 @@ export async function GET(req: NextRequest) {
     date: dateUTC,
     open,
     close,
-    pctChange: pctChange.toFixed(4),
+    pctChange: Number.isFinite(pctChange) ? pctChange.toFixed(4) : String(pctChange),
+    source: r.base,
   });
 }

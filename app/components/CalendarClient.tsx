@@ -1,3 +1,311 @@
+"use client";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+type CandleRow = {
+  date_utc: string;
+  open: string;
+  close: string;
+  abs_change: string;
+  pct_change: string;
+};
+
+function utcNowYM() {
+  const now = new Date();
+  return { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 };
+}
+
+function monthLabel(year: number, month: number) {
+  const d = new Date(Date.UTC(year, month - 1, 1));
+  return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+}
+
+function weekdayLabel(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleString("en-US", {
+    weekday: "short",
+  });
+}
+
+function fmt(v: string | number) {
+  const n = Number(v);
+  if (!isFinite(n)) return String(v);
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function todayKeyUTC() {
+  const n = new Date();
+  const y = n.getUTCFullYear();
+  const m = String(n.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(n.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export default function CalendarClient() {
+  const initial = utcNowYM();
+  const [year, setYear] = useState<number>(initial.year);
+  const [month, setMonth] = useState<number>(initial.month);
+  const [rows, setRows] = useState<CandleRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fit-to-viewport
+  const fitWrapRef = useRef<HTMLDivElement | null>(null);
+  const fitInnerRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+
+  const years = useMemo(() => {
+    const y: number[] = [];
+    for (let i = 2020; i <= initial.year; i++) y.push(i);
+    return y;
+  }, [initial.year]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const r = await fetch(`/api/candles?year=${year}&month=${month}`, {
+          cache: "no-store",
+        });
+        const j = await r.json();
+        if (!cancelled) setRows(Array.isArray(j.days) ? j.days : []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [year, month]);
+
+  function prev() {
+    if (month === 1) {
+      if (year > 2020) {
+        setYear(year - 1);
+        setMonth(12);
+      }
+    } else setMonth(month - 1);
+  }
+
+  function next() {
+    const maxY = initial.year;
+    const maxM = initial.month;
+    if (year > maxY || (year === maxY && month >= maxM)) return;
+    if (month === 12) {
+      setYear(year + 1);
+      setMonth(1);
+    } else setMonth(month + 1);
+  }
+
+  useEffect(() => {
+    function recalc() {
+      const wrap = fitWrapRef.current;
+      const inner = fitInnerRef.current;
+      if (!wrap || !inner) return;
+
+      const wrapRect = wrap.getBoundingClientRect();
+      const availW = wrapRect.width;
+
+      const topOffset = wrapRect.top;
+      const availH = window.innerHeight - topOffset - 20;
+
+      // measure at scale=1
+      inner.style.transform = "scale(1)";
+      inner.style.transformOrigin = "top left";
+      const innerRect = inner.getBoundingClientRect();
+
+      const needW = innerRect.width;
+      const needH = innerRect.height;
+
+      const s = Math.min(availW / needW, availH / needH, 1);
+      setScale(Number.isFinite(s) ? s : 1);
+    }
+
+    recalc();
+    window.addEventListener("resize", recalc);
+    return () => window.removeEventListener("resize", recalc);
+  }, [year, month, rows.length]);
+
+  return (
+    <section style={{ marginTop: 14 }}>
+      <div style={styles.navRow}>
+        <button onClick={prev} style={styles.navBtn}>
+          ‹ Prev
+        </button>
+
+        <div style={styles.selectGroup}>
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            style={styles.select}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", {
+                  month: "long",
+                })}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            style={styles.select}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={next}
+          style={{
+            ...styles.navBtn,
+            opacity: year === initial.year && month === initial.month ? 0.45 : 1,
+          }}
+        >
+          Next ›
+        </button>
+      </div>
+
+      <div style={styles.monthTitleRow}>
+        <div style={styles.monthTitle}>{monthLabel(year, month)}</div>
+        {loading ? <div style={styles.loading}>Loading…</div> : null}
+      </div>
+
+      <div ref={fitWrapRef} style={styles.fitWrap}>
+        <div
+          ref={fitInnerRef}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            width: "fit-content",
+          }}
+        >
+          <CalendarGrid year={year} month={month} rows={rows} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CalendarGrid({
+  year,
+  month,
+  rows,
+}: {
+  year: number;
+  month: number;
+  rows: CandleRow[];
+}) {
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const firstWeekdayMon0 = (first.getUTCDay() + 6) % 7; // Mon=0
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  const byDate = new Map<string, CandleRow>();
+  for (const r of rows) {
+    const key = new Date(r.date_utc).toISOString().slice(0, 10);
+    byDate.set(key, r);
+  }
+
+  const today = todayKeyUTC();
+  const cells: React.ReactNode[] = [];
+
+  for (let i = 0; i < firstWeekdayMon0; i++) {
+    cells.push(<div key={`pad-${i}`} style={styles.padCell} />);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mm = String(month).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    const dateKey = `${year}-${mm}-${dd}`;
+
+    const row = byDate.get(dateKey);
+    const isToday = dateKey === today;
+
+    const pct = row ? Number(row.pct_change) : null;
+    const isUp = pct !== null && pct >= 0;
+
+    const bg = row
+      ? isUp
+        ? "rgba(20, 83, 45, 0.45)"
+        : "rgba(127, 29, 29, 0.45)"
+      : isToday
+      ? "rgba(30, 64, 175, 0.22)"
+      : "rgba(255,255,255,0.03)";
+
+    const border = row
+      ? isUp
+        ? "rgba(34, 197, 94, 0.35)"
+        : "rgba(239, 68, 68, 0.35)"
+      : isToday
+      ? "rgba(96, 165, 250, 0.35)"
+      : "rgba(255,255,255,0.10)";
+
+    const pctText =
+      pct === null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+
+    const label = `${d} ${new Date(Date.UTC(year, month - 1, d)).toLocaleString(
+      "en-US",
+      { month: "short" }
+    )} - ${weekdayLabel(dateKey)}`;
+
+    cells.push(
+      <div
+        key={dateKey}
+        style={{
+          ...styles.dayCell,
+          background: bg,
+          border: `1px solid ${border}`,
+        }}
+      >
+        <div style={styles.dayLabelRow}>
+          <div style={styles.dayLabel}>{label}</div>
+          {isToday ? <div style={styles.todayPill}>TODAY</div> : null}
+        </div>
+
+        {row ? (
+          <>
+            <div style={styles.line}>Open: {fmt(row.open)}</div>
+            <div style={styles.line}>Close: {fmt(row.close)}</div>
+            <div
+              style={{
+                ...styles.pct,
+                color: pct !== null && pct < 0 ? "#fecaca" : "#bbf7d0",
+              }}
+            >
+              {pctText}
+            </div>
+          </>
+        ) : isToday ? (
+          <>
+            <div style={styles.noDataTitle}>Today (in progress)</div>
+          </>
+        ) : (
+          <div style={styles.noData}>No data</div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={styles.weekRow}>
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
+          <div key={w} style={styles.weekHeader}>
+            {w}
+          </div>
+        ))}
+      </div>
+
+      <div style={styles.grid}>{cells}</div>
+    </div>
+  );
+}
+
 const styles: Record<string, React.CSSProperties> = {
   navRow: {
     display: "flex",
@@ -39,7 +347,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loading: { opacity: 0.7, color: "#e7edf5" },
 
-  // Fit to viewport wrapper
   fitWrap: {
     width: "100%",
     overflow: "hidden",

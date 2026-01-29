@@ -11,12 +11,16 @@ type CandleRow = {
 };
 
 const START_YEAR = 2020;
+
 const DISABLED_BORDER = "rgba(255,255,255,0.10)";
 const DISABLED_BG = "rgba(255,255,255,0.04)";
 const DISABLED_TEXT = "rgba(255,255,255,0.35)";
+
+// Grid ölçüleri (stabil)
 const CELL_W = 150;
 const CELL_H = 116;
 const GAP = 10;
+export const CAL_W = 7 * CELL_W + 6 * GAP;
 
 // Hover renkleri (BTC)
 const HOVER_BORDER = "rgba(247,147,26,0.50)"; // #F7931A @ 50%
@@ -61,7 +65,6 @@ function hoverOff(el: HTMLElement) {
   el.style.background = BASE_BG;
 }
 
-
 export default function CalendarClient() {
   const initial = utcNowYM();
   const [year, setYear] = useState<number>(initial.year);
@@ -87,9 +90,7 @@ export default function CalendarClient() {
     (async () => {
       setLoading(true);
       try {
-        const r = await fetch(`/api/candles?year=${year}&month=${month}`, {
-          cache: "no-store",
-        });
+        const r = await fetch(`/api/candles?year=${year}&month=${month}`, { cache: "no-store" });
         const j = await r.json();
         if (!cancelled) setRows(Array.isArray(j.days) ? j.days : []);
       } finally {
@@ -150,7 +151,7 @@ export default function CalendarClient() {
   }, [year, month, rows.length]);
 
   return (
-    <section>
+    <section style={{ width: "100%" }}>
       {/* Kontroller */}
       <div style={styles.controlsRow}>
         {/* Prev */}
@@ -174,9 +175,7 @@ export default function CalendarClient() {
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
-                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", {
-                  month: "long",
-                })}
+                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", { month: "long" })}
               </option>
             ))}
           </select>
@@ -197,28 +196,27 @@ export default function CalendarClient() {
         </div>
 
         {/* Next */}
-<button
-  onClick={next}
-  disabled={isAtMax}
-  style={{
-    ...styles.navBtn,
-    borderColor: isAtMax ? DISABLED_BORDER : BASE_BORDER,
-    background: isAtMax ? DISABLED_BG : BASE_BG,
-    color: isAtMax ? DISABLED_TEXT : "#e7edf5",
-    cursor: isAtMax ? "not-allowed" : "pointer",
-  }}
-  onMouseEnter={(e) => {
-    if (isAtMax) return;
-    hoverOn(e.currentTarget);
-  }}
-  onMouseLeave={(e) => {
-    if (isAtMax) return;
-    hoverOff(e.currentTarget);
-  }}
->
-  Next ›
-</button>
-
+        <button
+          onClick={next}
+          disabled={isAtMax}
+          style={{
+            ...styles.navBtn,
+            borderColor: isAtMax ? DISABLED_BORDER : BASE_BORDER,
+            background: isAtMax ? DISABLED_BG : BASE_BG,
+            color: isAtMax ? DISABLED_TEXT : "#e7edf5",
+            cursor: isAtMax ? "not-allowed" : "pointer",
+          }}
+          onMouseEnter={(e) => {
+            if (isAtMax) return;
+            hoverOn(e.currentTarget);
+          }}
+          onMouseLeave={(e) => {
+            if (isAtMax) return;
+            hoverOff(e.currentTarget);
+          }}
+        >
+          Next ›
+        </button>
       </div>
 
       {/* Takvim */}
@@ -314,12 +312,7 @@ function CalendarGrid({
           <>
             <div style={styles.line}>Open: {fmt(row.open)}</div>
             <div style={styles.line}>Close: {fmt(row.close)}</div>
-            <div
-              style={{
-                ...styles.pct,
-                color: pct !== null && pct < 0 ? "#fecaca" : "#bbf7d0",
-              }}
-            >
+            <div style={{ ...styles.pct, color: pct !== null && pct < 0 ? "#fecaca" : "#bbf7d0" }}>
               {pctText}
             </div>
           </>
@@ -333,7 +326,7 @@ function CalendarGrid({
   }
 
   return (
-    <div style={{ width: 7 * CELL_W + 6 * GAP }}>
+    <div style={{ width: CAL_W }}>
       <div style={styles.weekRow}>
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
           <div key={w} style={styles.weekHeader}>

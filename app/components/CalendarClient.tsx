@@ -10,6 +10,13 @@ type CandleRow = {
   pct_change: string;
 };
 
+const START_YEAR = 2020;
+
+// Grid ölçüleri (stabil görünüm için SABİT)
+const CELL_W = 150;
+const CELL_H = 128;
+const GAP = 10;
+
 function utcNowYM() {
   const now = new Date();
   return { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 };
@@ -20,10 +27,8 @@ function monthLabel(year: number, month: number) {
   return d.toLocaleString("en-US", { month: "long", year: "numeric" });
 }
 
-function weekdayLabel(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleString("en-US", {
-    weekday: "short",
-  });
+function weekdayLabelShort(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleString("en-US", { weekday: "short" });
 }
 
 function fmt(v: string | number) {
@@ -47,14 +52,14 @@ export default function CalendarClient() {
   const [rows, setRows] = useState<CandleRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fit-to-viewport (scale down only)
-  const fitOuterRef = useRef<HTMLDivElement | null>(null);
+  // Fit-to-viewport (sadece küçült)
+  const fitWrapRef = useRef<HTMLDivElement | null>(null);
   const fitInnerRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
 
   const years = useMemo(() => {
     const y: number[] = [];
-    for (let i = 2020; i <= initial.year; i++) y.push(i);
+    for (let i = START_YEAR; i <= initial.year; i++) y.push(i);
     return y;
   }, [initial.year]);
 
@@ -63,9 +68,7 @@ export default function CalendarClient() {
     (async () => {
       setLoading(true);
       try {
-        const r = await fetch(`/api/candles?year=${year}&month=${month}`, {
-          cache: "no-store",
-        });
+        const r = await fetch(`/api/candles?year=${year}&month=${month}`, { cache: "no-store" });
         const j = await r.json();
         if (!cancelled) setRows(Array.isArray(j.days) ? j.days : []);
       } finally {
@@ -79,7 +82,7 @@ export default function CalendarClient() {
 
   function prev() {
     if (month === 1) {
-      if (year > 2020) {
+      if (year > START_YEAR) {
         setYear(year - 1);
         setMonth(12);
       }
@@ -96,27 +99,24 @@ export default function CalendarClient() {
     } else setMonth(month + 1);
   }
 
-  // Recalc scale so calendar fits "above the fold"
   useEffect(() => {
     function recalc() {
-      const outer = fitOuterRef.current;
+      const wrap = fitWrapRef.current;
       const inner = fitInnerRef.current;
-      if (!outer || !inner) return;
+      if (!wrap || !inner) return;
 
-      const outerRect = outer.getBoundingClientRect();
-
-      // Available area for the calendar (inside compact container)
-      const availW = outerRect.width;
-
-      // subtract a little for breathing room
-      const topOffset = outerRect.top;
-      const availH = window.innerHeight - topOffset - 16;
-
-      // measure at scale=1
+      // İçeriği 1x ölç
       inner.style.transform = "scale(1)";
-      inner.style.transformOrigin = "top left";
-      const innerRect = inner.getBoundingClientRect();
+      inner.style.transformOrigin = "top center";
 
+      const wrapRect = wrap.getBoundingClientRect();
+      const availW = wrapRect.width;
+
+      // Footer’a çok yaklaşmasın diye küçük bir pay
+      const topOffset = wrapRect.top;
+      const availH = window.innerHeight - topOffset - 24;
+
+      const innerRect = inner.getBoundingClientRect();
       const needW = innerRect.width;
       const needH = innerRect.height;
 
@@ -130,32 +130,23 @@ export default function CalendarClient() {
   }, [year, month, rows.length]);
 
   return (
-    <section style={styles.section}>
-      <div style={styles.topRow}>
+    <section>
+      {/* Kontroller: ortada toplanmış */}
+      <div style={styles.controlsRow}>
         <button onClick={prev} style={styles.navBtn}>
           ‹ Prev
         </button>
 
-        <div style={styles.selectGroup}>
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            style={styles.select}
-          >
+        <div style={styles.centerControls}>
+          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={styles.select}>
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
-                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", {
-                  month: "long",
-                })}
+                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", { month: "long" })}
               </option>
             ))}
           </select>
 
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            style={styles.select}
-          >
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={styles.select}>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -175,39 +166,25 @@ export default function CalendarClient() {
         </button>
       </div>
 
-      <div style={styles.monthTitleRow}>
-        <div style={styles.monthTitle}>{monthLabel(year, month)}</div>
-        {loading ? <div style={styles.loading}>Loading…</div> : null}
-      </div>
 
-      {/* IMPORTANT: compact centered container (brings back side space) */}
-      <div style={styles.centerWrap}>
-        <div ref={fitOuterRef} style={styles.fitOuter}>
-          <div
-            ref={fitInnerRef}
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
-              width: "fit-content",
-            }}
-          >
-            <CalendarGrid year={year} month={month} rows={rows} />
-          </div>
+      {/* Takvim: ortalanır + gerekiyorsa scale ile küçülür */}
+      <div ref={fitWrapRef} style={styles.fitWrap}>
+        <div
+          ref={fitInnerRef}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: "top center",
+            display: "inline-block",
+          }}
+        >
+          <CalendarGrid year={year} month={month} rows={rows} />
         </div>
       </div>
     </section>
   );
 }
 
-function CalendarGrid({
-  year,
-  month,
-  rows,
-}: {
-  year: number;
-  month: number;
-  rows: CandleRow[];
-}) {
+function CalendarGrid({ year, month, rows }: { year: number; month: number; rows: CandleRow[] }) {
   const first = new Date(Date.UTC(year, month - 1, 1));
   const firstWeekdayMon0 = (first.getUTCDay() + 6) % 7; // Mon=0
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -252,13 +229,11 @@ function CalendarGrid({
       ? "rgba(96, 165, 250, 0.35)"
       : "rgba(255,255,255,0.10)";
 
-    const pctText =
-      pct === null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+    const pctText = pct === null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
 
-    const label = `${d} ${new Date(Date.UTC(year, month - 1, d)).toLocaleString(
-      "en-US",
-      { month: "short" }
-    )} - ${weekdayLabel(dateKey)}`;
+    const label = `${d} ${new Date(Date.UTC(year, month - 1, d)).toLocaleString("en-US", {
+      month: "short",
+    })} - ${weekdayLabelShort(dateKey)}`;
 
     cells.push(
       <div
@@ -288,7 +263,6 @@ function CalendarGrid({
             </div>
           </>
         ) : isToday ? (
-          // Keep height consistent: no extra paragraphs, no long copy
           <div style={styles.noDataTitle}>Today (in progress)</div>
         ) : (
           <div style={styles.noData}>No data</div>
@@ -298,9 +272,9 @@ function CalendarGrid({
   }
 
   return (
-    <div>
+    <div style={{ width: 7 * CELL_W + 6 * GAP }}>
       <div style={styles.weekRow}>
-        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((w) => (
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
           <div key={w} style={styles.weekHeader}>
             {w}
           </div>
@@ -313,64 +287,49 @@ function CalendarGrid({
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  section: { marginTop: 10 },
-
-  topRow: {
+  controlsRow: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
+    gap: 14,
+    marginBottom: 18,
   },
   navBtn: {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     color: "#e7edf5",
-    padding: "9px 13px",
+    padding: "10px 14px",
     borderRadius: 12,
     cursor: "pointer",
     fontWeight: 800,
   },
-  selectGroup: { display: "flex", gap: 10 },
+  centerControls: {
+    display: "flex",
+    gap: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   select: {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     color: "#e7edf5",
-    padding: "9px 12px",
+    padding: "10px 12px",
     borderRadius: 12,
     fontWeight: 800,
     cursor: "pointer",
   },
 
-  monthTitleRow: {
-    display: "flex",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  monthTitle: {
-    fontSize: 28,
-    fontWeight: 950,
-    letterSpacing: 0.2,
-    color: "#e7edf5",
-  },
-  loading: { opacity: 0.7, color: "#e7edf5" },
-
-  // Centered, capped width -> brings back side spaces & stops "stretch"
-  centerWrap: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "center",
-  },
-  fitOuter: {
+  fitWrap: {
     width: "100%",
     overflow: "hidden",
+    display: "flex",
+    justifyContent: "center",
   },
 
   weekRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(7, minmax(140px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: `repeat(7, ${CELL_W}px)`,
+    gap: GAP,
     marginBottom: 8,
   },
   weekHeader: {
@@ -382,34 +341,34 @@ const styles: Record<string, React.CSSProperties> = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(7, minmax(140px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: `repeat(7, ${CELL_W}px)`,
+    gap: GAP,
   },
 
-  // All cells identical height
   padCell: {
-    height: 120,
+    height: CELL_H,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.08)",
     background: "rgba(255,255,255,0.02)",
+    boxSizing: "border-box",
   },
 
-  dayCell: {
-    height: 120,
-    borderRadius: 14,
-    padding: 12,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "flex-start",
-  },
+dayCell: {
+  height: 128,
+  borderRadius: 14,
+  padding: "10px 12px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between", // ⬅️ kritik
+  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+},
 
   dayLabelRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   dayLabel: { fontWeight: 950, color: "#e7edf5" },
 
@@ -423,10 +382,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: "rgba(30, 64, 175, 0.20)",
     color: "#bfdbfe",
     whiteSpace: "nowrap",
+    flex: "0 0 auto",
   },
 
-  line: { opacity: 0.9, marginTop: 2, color: "#e7edf5", fontSize: 13 },
-  pct: { marginTop: 8, fontWeight: 950, fontSize: 16 },
-  noData: { opacity: 0.6, color: "#e7edf5", fontSize: 13 },
-  noDataTitle: { marginTop: 6, fontWeight: 950, color: "#bfdbfe", fontSize: 13 },
+  line: { opacity: 0.9, marginTop: 2, color: "#e7edf5" },
+  pct: { marginTop: 6, fontWeight: 900, fontSize: 17 },
+  noData: { opacity: 0.6, color: "#e7edf5" },
+  noDataTitle: { marginTop: 6, fontWeight: 950, color: "#bfdbfe" },
 };

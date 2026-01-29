@@ -1,98 +1,80 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-type PriceResp = {
+type PriceResponse = {
   symbol: string;
-  price: number;
+  price: number | string;
   updatedAtUTC: string;
-  source: string;
 };
 
-function fmt(n: number) {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-export default function PriceCardClient(props: { variant?: "card" | "inlinePrice" | "inlineUpdated" } = {}) {
-  const variant = props.variant ?? "card";
-
-  const [p, setP] = useState<PriceResp | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+export default function PriceCardClient() {
+  const [data, setData] = useState<PriceResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function run() {
       try {
-        setErr(null);
         const r = await fetch("/api/price", { cache: "no-store" });
-        const j = (await r.json()) as PriceResp | { error?: string };
-        if (cancelled) return;
-
-        if (!r.ok || (j as any).error) {
-          setErr((j as any).error || "price error");
-          setP(null);
-          return;
-        }
-        setP(j as PriceResp);
-      } catch (e: any) {
-        if (!cancelled) {
-          setErr(e?.message || "price error");
-          setP(null);
-        }
-      }
+        const j = (await r.json()) as PriceResponse;
+        if (!cancelled) setData(j);
+      } catch {}
     }
 
-    load();
-    const t = setInterval(load, 30_000);
+    run();
+    const t = setInterval(run, 30_000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
   }, []);
 
-  const priceText = p ? fmt(p.price) : "—";
-  const updatedText = p
-    ? new Date(p.updatedAtUTC).toISOString().slice(0, 16).replace("T", " ") + " UTC"
+  const priceNum = data ? Number(data.price) : NaN;
+  const priceText = data
+    ? Number.isFinite(priceNum)
+      ? priceNum.toLocaleString(undefined, { maximumFractionDigits: 2 })
+      : String(data.price)
     : "—";
 
-  if (variant === "inlinePrice") {
-    return <span>{priceText}</span>;
-  }
+  const updatedText = data
+    ? `${new Date(data.updatedAtUTC)
+        .toISOString()
+        .replace("T", " ")
+        .slice(0, 16)} UTC`
+    : "—";
 
-  if (variant === "inlineUpdated") {
-    return (
-      <span>
-        {updatedText}
-        {err ? <span style={{ color: "#fca5a5" }}> · {err}</span> : null}
-      </span>
-    );
-  }
-
-  // default card (kept for safety)
   return (
-    <div style={styles.priceCard}>
-      <div style={styles.priceCardTitle}>Bitcoin Current Price</div>
-      <div style={styles.priceValue}>{priceText}</div>
-      <div style={styles.priceUpdated}>
-        Updated: {updatedText}
-        {err ? <span style={styles.err}> · {err}</span> : null}
-      </div>
+    <div style={styles.card}>
+      <div style={styles.title}>BTC</div>
+      <div style={styles.price}>{priceText}</div>
+      <div style={styles.updated}>{updatedText}</div>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  priceCard: {
+  card: {
     border: "1px solid rgba(255,255,255,0.12)",
     background: "rgba(0,0,0,0.25)",
-    borderRadius: 14,
-    padding: 16,
-    minWidth: 320,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+    borderRadius: 12,
+    padding: "10px 14px",
+    minWidth: 220,
+    textAlign: "right",
   },
-  priceCardTitle: { fontWeight: 700, opacity: 0.9, marginBottom: 10 },
-  priceValue: { fontSize: 34, fontWeight: 900, letterSpacing: 0.2 },
-  priceUpdated: { opacity: 0.75, marginTop: 6, fontSize: 12 },
-  err: { color: "#fca5a5", opacity: 1 },
+  title: {
+    fontSize: 12,
+    opacity: 0.75,
+    fontWeight: 800,
+  },
+  price: {
+    fontSize: 24,
+    fontWeight: 900,
+    letterSpacing: 0.2,
+  },
+  updated: {
+    fontSize: 11,
+    opacity: 0.65,
+    marginTop: 2,
+  },
 };

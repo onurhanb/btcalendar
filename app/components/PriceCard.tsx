@@ -53,8 +53,8 @@ export default function PriceCard() {
 
 const styles: Record<string, React.CSSProperties> = {
   priceCard: {
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.25)",
+    border: "55px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.03)",
     borderRadius: 14,
     padding: 16,
     minWidth: 320,

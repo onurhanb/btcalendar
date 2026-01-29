@@ -14,7 +14,7 @@ const START_YEAR = 2020;
 
 // Grid ölçüleri (stabil görünüm için SABİT)
 const CELL_W = 150;
-const CELL_H = 128;
+const CELL_H = 116;
 const GAP = 10;
 
 function utcNowYM() {
@@ -220,13 +220,18 @@ function CalendarGrid({
     const pct = row ? Number(row.pct_change) : null;
     const isUp = pct !== null && pct >= 0;
 
-    const bg = row
-      ? isUp
-        ? "rgba(20, 83, 45, 0.45)"
-        : "rgba(127, 29, 29, 0.45)"
-      : isToday
-      ? "rgba(30, 64, 175, 0.22)"
-      : "rgba(255,255,255,0.03)";
+const bg = row
+  ? isUp
+    // 🟢 Yeşilden şeffafa (yukarı doğru çok hafif)
+    ? "linear-gradient(360deg, rgba(34,197,94,0.22) 0%, rgba(34,197,94,0.04) 66%)"
+    // 🔴 Kırmızıdan şeffafa
+    : "linear-gradient(360deg, rgba(239,68,68,0.22) 0%, rgba(239,68,68,0.04) 66%)"
+  : isToday
+  // 🔵 Today → mavi vurgu ama bağırmıyor
+  ? "linear-gradient(360deg, rgba(59,130,246,0.25) 0%, rgba(59,130,246,0.06) 6%)"
+  // boş günler
+  : "rgba(255,255,255,0.02)";
+
 
     const border = row
       ? isUp
@@ -360,7 +365,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   dayCell: {
-    height: 128,
+    height: 116,
     borderRadius: 14,
     padding: "10px 12px",
     display: "flex",
@@ -368,6 +373,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
     boxSizing: "border-box",
+backdropFilter: "blur(2px)",
   },
 
   dayLabelRow: {
@@ -393,7 +399,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   line: {
-    opacity: 0.9,
+    opacity: 0.5,
     marginTop: 0,
     fontSize: 12,
     lineHeight: 1.3,

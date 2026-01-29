@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type CandleRow = {
   date_utc: string;
@@ -47,6 +47,11 @@ export default function CalendarClient() {
   const [rows, setRows] = useState<CandleRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // ✅ viewport-fit
+  const fitWrapRef = useRef<HTMLDivElement | null>(null);
+  const fitInnerRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+
   const years = useMemo(() => {
     const y: number[] = [];
     for (let i = 2020; i <= initial.year; i++) y.push(i);
@@ -90,6 +95,37 @@ export default function CalendarClient() {
       setMonth(1);
     } else setMonth(month + 1);
   }
+
+  // ✅ scale hesapla: takvim alanı ekrana sığsın (header/footer dahil)
+  useEffect(() => {
+    function recalc() {
+      const wrap = fitWrapRef.current;
+      const inner = fitInnerRef.current;
+      if (!wrap || !inner) return;
+
+      // sayfanın üst kısmındaki alanları hesaba kat
+      const wrapRect = wrap.getBoundingClientRect();
+      const availW = wrapRect.width;
+
+      const topOffset = wrapRect.top; // viewport'ta wrap'ın başladığı yer
+      const availH = window.innerHeight - topOffset - 24; // biraz pay
+
+      // inner ölçüsünü scale=1 iken ölçmek için geçici 1 yap
+      inner.style.transform = "scale(1)";
+      inner.style.transformOrigin = "top left";
+
+      const innerRect = inner.getBoundingClientRect();
+      const needW = innerRect.width;
+      const needH = innerRect.height;
+
+      const s = Math.min(availW / needW, availH / needH, 1);
+      setScale(Number.isFinite(s) ? s : 1);
+    }
+
+    recalc();
+    window.addEventListener("resize", recalc);
+    return () => window.removeEventListener("resize", recalc);
+  }, [year, month, rows.length]);
 
   return (
     <section style={{ marginTop: 14 }}>
@@ -142,7 +178,19 @@ export default function CalendarClient() {
         {loading ? <div style={styles.loading}>Loading…</div> : null}
       </div>
 
-      <CalendarGrid year={year} month={month} rows={rows} />
+      {/* ✅ Fit to viewport wrapper */}
+      <div ref={fitWrapRef} style={styles.fitWrap}>
+        <div
+          ref={fitInnerRef}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            width: "fit-content",
+          }}
+        >
+          <CalendarGrid year={year} month={month} rows={rows} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -162,7 +210,7 @@ function CalendarGrid({
 
   const byDate = new Map<string, CandleRow>();
   for (const r of rows) {
-    const key = new Date(r.date_utc).toISOString().slice(0, 10); // YYYY-MM-DD
+    const key = new Date(r.date_utc).toISOString().slice(0, 10);
     byDate.set(key, r);
   }
 
@@ -238,7 +286,7 @@ function CalendarGrid({
         ) : isToday ? (
           <>
             <div style={styles.noDataTitle}>Today (in progress)</div>
-            <div style={styles.noDataHint}>Daily candle closes at 23:59 UTC</div>
+            {/* ✅ kaldırdık: Daily candle closes at 23:59 UTC */}
           </>
         ) : (
           <div style={styles.noData}>No data</div>
@@ -303,16 +351,25 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loading: { opacity: 0.7, color: "#e7edf5" },
 
-  // ✅ daha kompakt
+  // ✅ takvimi viewport'a sığdıran sarıcı
+  fitWrap: {
+    width: "100%",
+    overflow: "hidden",
+  },
+
   weekRow: {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
     gap: 10,
     marginBottom: 8,
   },
-  weekHeader: { opacity: 0.75, fontWeight: 800, paddingLeft: 6, color: "#e7edf5" },
+  weekHeader: {
+    opacity: 0.75,
+    fontWeight: 800,
+    paddingLeft: 6,
+    color: "#e7edf5",
+  },
 
-  // ✅ daha kompakt + minimum genişlik
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(150px, 1fr))",
@@ -320,14 +377,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   padCell: {
-    minHeight: 128,
+    height: 128, // ✅ hepsi aynı yükseklik
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.08)",
     background: "rgba(255,255,255,0.02)",
   },
 
   dayCell: {
-    minHeight: 128,
+    height: 128, // ✅ hepsi aynı yükseklik
     borderRadius: 14,
     padding: 12,
     boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
@@ -356,7 +413,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   line: { opacity: 0.9, marginTop: 2, color: "#e7edf5" },
   pct: { marginTop: 10, fontWeight: 900, fontSize: 18 },
+  noData apparent: undefined,
   noData: { opacity: 0.6, color: "#e7edf5" },
   noDataTitle: { marginTop: 6, fontWeight: 900, color: "#bfdbfe" },
-  noDataHint: { marginTop: 6, opacity: 0.75, fontSize: 12, color: "#e7edf5" },
 };

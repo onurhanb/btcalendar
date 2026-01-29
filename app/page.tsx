@@ -13,9 +13,9 @@ export default function Page() {
             <div style={styles.brandRow}>
               <div style={styles.brandIcon}>₿</div>
               <div style={styles.brandText}>
-                <div style={styles.brandName}>btcalendar</div>
+                <div style={styles.brandName}>BTCalendar</div>
                 <div style={styles.brandMeta}>
-                  Binance BTC/USDT (UTC 00:00–23:59)
+                  Track Bitcoin daily prices.
                 </div>
               </div>
             </div>
@@ -26,10 +26,13 @@ export default function Page() {
 
         <CalendarClient />
 
-        <footer style={styles.footer}>
-          Prices are derived from Binance BTCUSDT daily candles (UTC 00:00–23:59).
-          Open and Close correspond to the candle’s open and close.
-        </footer>
+<footer style={styles.footer}>
+  <div style={styles.footerInner}>
+    Prices are derived from Binance BTCUSDT daily candles (UTC 00:00–23:59). Open
+    and Close correspond to the candle’s open and close.
+  </div>
+</footer>
+
       </div>
     </main>
   );
@@ -81,11 +84,18 @@ const styles: Record<string, React.CSSProperties> = {
   brandName: { fontSize: 20, fontWeight: 900 },
   brandMeta: { opacity: 0.75, fontSize: 13 },
 
-  footer: {
-    opacity: 0.6,
-    fontSize: 12,
-    marginTop: 16,
-    borderTop: "1px solid rgba(255,255,255,0.10)",
-    paddingTop: 12,
-  },
+footer: {
+  opacity: 0.6,
+  fontSize: 12,
+  marginTop: 16,
+  borderTop: "1px solid rgba(255,255,255,0.10)",
+  paddingTop: 12,
+  display: "flex",
+  justifyContent: "center",
+},
+footerInner: {
+  width: 7 * 150 + 6 * 10, // CELL_W=150, GAP=10 ile takvimin sabit genişliği
+  textAlign: "center",
+},
+
 };

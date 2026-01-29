@@ -46,7 +46,7 @@ export default function PriceCardClient() {
 
   return (
     <div style={styles.card}>
-      <div style={styles.title}>BTC</div>
+      <div style={styles.title}>Bitcoin</div>
       <div style={styles.price}>{priceText}</div>
       <div style={styles.updated}>{updatedText}</div>
     </div>

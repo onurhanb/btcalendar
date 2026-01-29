@@ -385,8 +385,14 @@ dayCell: {
     flex: "0 0 auto",
   },
 
-  line: { opacity: 0.9, marginTop: 2, color: "#e7edf5" },
-  pct: { marginTop: 6, fontWeight: 900, fontSize: 17 },
+line: {
+  opacity: 0.9,
+  marginTop: 0,
+  fontSize: 12,     // ⬅️ en kritik
+  lineHeight: 1.3,  // ⬅️ üst–alt orantıyı çözer
+  color: "#e7edf5",
+},
+  pct: { marginTop: 10, fontWeight: 900, fontSize: 17 },
   noData: { opacity: 0.6, color: "#e7edf5" },
   noDataTitle: { marginTop: 6, fontWeight: 950, color: "#bfdbfe" },
 };

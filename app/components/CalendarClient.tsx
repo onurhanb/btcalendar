@@ -11,11 +11,19 @@ type CandleRow = {
 };
 
 const START_YEAR = 2020;
-
-// Grid ölçüleri (stabil görünüm için SABİT)
+const DISABLED_BORDER = "rgba(255,255,255,0.10)";
+const DISABLED_BG = "rgba(255,255,255,0.04)";
+const DISABLED_TEXT = "rgba(255,255,255,0.35)";
 const CELL_W = 150;
 const CELL_H = 116;
 const GAP = 10;
+
+// Hover renkleri (BTC)
+const HOVER_BORDER = "rgba(247,147,26,0.50)"; // #F7931A @ 50%
+const HOVER_BG = "rgba(247,147,26,0.12)";
+
+const BASE_BORDER = "rgba(255,255,255,0.14)";
+const BASE_BG = "rgba(0,0,0,0.25)";
 
 function utcNowYM() {
   const now = new Date();
@@ -43,6 +51,17 @@ function ordinal(n: number) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+function hoverOn(el: HTMLElement) {
+  el.style.borderColor = HOVER_BORDER;
+  el.style.background = HOVER_BG;
+}
+
+function hoverOff(el: HTMLElement) {
+  el.style.borderColor = BASE_BORDER;
+  el.style.background = BASE_BG;
+}
+
+
 export default function CalendarClient() {
   const initial = utcNowYM();
   const [year, setYear] = useState<number>(initial.year);
@@ -61,12 +80,16 @@ export default function CalendarClient() {
     return y;
   }, [initial.year]);
 
+  const isAtMax = year === initial.year && month === initial.month;
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const r = await fetch(`/api/candles?year=${year}&month=${month}`, { cache: "no-store" });
+        const r = await fetch(`/api/candles?year=${year}&month=${month}`, {
+          cache: "no-store",
+        });
         const j = await r.json();
         if (!cancelled) setRows(Array.isArray(j.days) ? j.days : []);
       } finally {
@@ -110,7 +133,6 @@ export default function CalendarClient() {
       const wrapRect = wrap.getBoundingClientRect();
       const availW = wrapRect.width;
 
-      // Footer’a çok yaklaşmasın diye küçük bir pay
       const topOffset = wrapRect.top;
       const availH = window.innerHeight - topOffset - 24;
 
@@ -129,22 +151,43 @@ export default function CalendarClient() {
 
   return (
     <section>
-      {/* Kontroller: ortada toplanmış */}
+      {/* Kontroller */}
       <div style={styles.controlsRow}>
-        <button onClick={prev} style={styles.navBtn}>
+        {/* Prev */}
+        <button
+          onClick={prev}
+          style={styles.navBtn}
+          onMouseEnter={(e) => hoverOn(e.currentTarget)}
+          onMouseLeave={(e) => hoverOff(e.currentTarget)}
+        >
           ‹ Prev
         </button>
 
+        {/* Month + Year */}
         <div style={styles.centerControls}>
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={styles.select}>
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            style={styles.select}
+            onMouseEnter={(e) => hoverOn(e.currentTarget)}
+            onMouseLeave={(e) => hoverOff(e.currentTarget)}
+          >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
-                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", { month: "long" })}
+                {new Date(Date.UTC(2025, m - 1, 1)).toLocaleString("en-US", {
+                  month: "long",
+                })}
               </option>
             ))}
           </select>
 
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={styles.select}>
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            style={styles.select}
+            onMouseEnter={(e) => hoverOn(e.currentTarget)}
+            onMouseLeave={(e) => hoverOff(e.currentTarget)}
+          >
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -153,18 +196,32 @@ export default function CalendarClient() {
           </select>
         </div>
 
-        <button
-          onClick={next}
-          style={{
-            ...styles.navBtn,
-            opacity: year === initial.year && month === initial.month ? 0.45 : 1,
-          }}
-        >
-          Next ›
-        </button>
+        {/* Next */}
+<button
+  onClick={next}
+  disabled={isAtMax}
+  style={{
+    ...styles.navBtn,
+    borderColor: isAtMax ? DISABLED_BORDER : BASE_BORDER,
+    background: isAtMax ? DISABLED_BG : BASE_BG,
+    color: isAtMax ? DISABLED_TEXT : "#e7edf5",
+    cursor: isAtMax ? "not-allowed" : "pointer",
+  }}
+  onMouseEnter={(e) => {
+    if (isAtMax) return;
+    hoverOn(e.currentTarget);
+  }}
+  onMouseLeave={(e) => {
+    if (isAtMax) return;
+    hoverOff(e.currentTarget);
+  }}
+>
+  Next ›
+</button>
+
       </div>
 
-      {/* Takvim: ortalanır + gerekiyorsa scale ile küçülür */}
+      {/* Takvim */}
       <div ref={fitWrapRef} style={styles.fitWrap}>
         <div
           ref={fitInnerRef}
@@ -220,18 +277,13 @@ function CalendarGrid({
     const pct = row ? Number(row.pct_change) : null;
     const isUp = pct !== null && pct >= 0;
 
-const bg = row
-  ? isUp
-    // 🟢 Yeşilden şeffafa (yukarı doğru çok hafif)
-    ? "linear-gradient(360deg, rgba(34,197,94,0.22) 0%, rgba(34,197,94,0.04) 66%)"
-    // 🔴 Kırmızıdan şeffafa
-    : "linear-gradient(360deg, rgba(239,68,68,0.22) 0%, rgba(239,68,68,0.04) 66%)"
-  : isToday
-  // 🔵 Today → mavi vurgu ama bağırmıyor
-  ? "linear-gradient(360deg, rgba(59,130,246,0.25) 0%, rgba(59,130,246,0.06) 6%)"
-  // boş günler
-  : "rgba(255,255,255,0.02)";
-
+    const bg = row
+      ? isUp
+        ? "linear-gradient(360deg, rgba(34,197,94,0.22) 0%, rgba(34,197,94,0.04) 66%)"
+        : "linear-gradient(360deg, rgba(239,68,68,0.22) 0%, rgba(239,68,68,0.04) 66%)"
+      : isToday
+      ? "linear-gradient(360deg, rgba(59,130,246,0.25) 0%, rgba(59,130,246,0.06) 66%)"
+      : "rgba(255,255,255,0.02)";
 
     const border = row
       ? isUp
@@ -242,8 +294,6 @@ const bg = row
       : "rgba(255,255,255,0.10)";
 
     const pctText = pct === null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
-
-    // sadece gün numarası (ordinal)
     const label = ordinal(d);
 
     cells.push(
@@ -285,7 +335,7 @@ const bg = row
   return (
     <div style={{ width: 7 * CELL_W + 6 * GAP }}>
       <div style={styles.weekRow}>
-        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((w) => (
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
           <div key={w} style={styles.weekHeader}>
             {w}
           </div>
@@ -305,29 +355,34 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 14,
     marginBottom: 18,
   },
+
   navBtn: {
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(0,0,0,0.25)",
+    border: `1px solid ${BASE_BORDER}`,
+    background: BASE_BG,
     color: "#e7edf5",
     padding: "8px 14px",
     borderRadius: 12,
     cursor: "pointer",
     fontWeight: 800,
+    transition: "background 0.18s ease, border-color 0.18s ease",
   },
+
   centerControls: {
     display: "flex",
     gap: 10,
     justifyContent: "center",
     alignItems: "center",
   },
+
   select: {
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(0,0,0,0.25)",
+    border: `1px solid ${BASE_BORDER}`,
+    background: BASE_BG,
     color: "#e7edf5",
     padding: "8px 12px",
     borderRadius: 12,
     fontWeight: 800,
     cursor: "pointer",
+    transition: "background 0.18s ease, border-color 0.18s ease",
   },
 
   fitWrap: {
@@ -343,6 +398,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: GAP,
     marginBottom: 8,
   },
+
   weekHeader: {
     opacity: 0.75,
     fontWeight: 900,
@@ -365,7 +421,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   dayCell: {
-    height: 116,
+    height: CELL_H,
     borderRadius: 14,
     padding: "10px 12px",
     display: "flex",
@@ -373,7 +429,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
     boxSizing: "border-box",
-backdropFilter: "blur(2px)",
+    backdropFilter: "blur(2px)",
   },
 
   dayLabelRow: {
@@ -383,6 +439,7 @@ backdropFilter: "blur(2px)",
     gap: 10,
     marginBottom: 10,
   },
+
   dayLabel: { fontWeight: 950, color: "#e7edf5", fontSize: 16 },
 
   todayPill: {
@@ -405,7 +462,9 @@ backdropFilter: "blur(2px)",
     lineHeight: 1.3,
     color: "#e7edf5",
   },
+
   pct: { marginTop: 10, fontWeight: 900, fontSize: 17 },
+
   noData: { opacity: 0.6, color: "#e7edf5" },
   noDataTitle: { marginTop: 6, fontWeight: 950, color: "#bfdbfe" },
 };

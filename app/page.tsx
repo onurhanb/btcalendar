@@ -42,7 +42,7 @@ const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
     background:
-      "radial-gradient(1200px 600px at 30% 0%, #1a2230 0%, #0b0f16 55%, #06080c 100%)",
+      "radial-gradient(1200px 600px at 25% 0%, #222a33 0%, #0b0f16 50%, #06080c 100%)",
     color: "#e7edf5",
     fontFamily:
       "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",

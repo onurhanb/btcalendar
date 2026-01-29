@@ -22,15 +22,6 @@ function utcNowYM() {
   return { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 };
 }
 
-function monthLabel(year: number, month: number) {
-  const d = new Date(Date.UTC(year, month - 1, 1));
-  return d.toLocaleString("en-US", { month: "long", year: "numeric" });
-}
-
-function weekdayLabelShort(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleString("en-US", { weekday: "short" });
-}
-
 function fmt(v: string | number) {
   const n = Number(v);
   if (!isFinite(n)) return String(v);
@@ -43,6 +34,13 @@ function todayKeyUTC() {
   const m = String(n.getUTCMonth() + 1).padStart(2, "0");
   const d = String(n.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+// 1st, 2nd, 3rd, 4th ... 11th, 12th, 13th ... 21st ...
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 export default function CalendarClient() {
@@ -166,7 +164,6 @@ export default function CalendarClient() {
         </button>
       </div>
 
-
       {/* Takvim: ortalanır + gerekiyorsa scale ile küçülür */}
       <div ref={fitWrapRef} style={styles.fitWrap}>
         <div
@@ -177,14 +174,24 @@ export default function CalendarClient() {
             display: "inline-block",
           }}
         >
-          <CalendarGrid year={year} month={month} rows={rows} />
+          <CalendarGrid year={year} month={month} rows={rows} loading={loading} />
         </div>
       </div>
     </section>
   );
 }
 
-function CalendarGrid({ year, month, rows }: { year: number; month: number; rows: CandleRow[] }) {
+function CalendarGrid({
+  year,
+  month,
+  rows,
+  loading,
+}: {
+  year: number;
+  month: number;
+  rows: CandleRow[];
+  loading: boolean;
+}) {
   const first = new Date(Date.UTC(year, month - 1, 1));
   const firstWeekdayMon0 = (first.getUTCDay() + 6) % 7; // Mon=0
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -231,9 +238,8 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
 
     const pctText = pct === null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
 
-    const label = `${d} ${new Date(Date.UTC(year, month - 1, d)).toLocaleString("en-US", {
-      month: "short",
-    })} - ${weekdayLabelShort(dateKey)}`;
+    // sadece gün numarası (ordinal)
+    const label = ordinal(d);
 
     cells.push(
       <div
@@ -263,9 +269,9 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
             </div>
           </>
         ) : isToday ? (
-          <div style={styles.noDataTitle}>in progress</div>
+          <div style={styles.noDataTitle}>{loading ? "Loading…" : "in progress"}</div>
         ) : (
-          <div style={styles.noData}>No data</div>
+          <div style={styles.noData}>{loading ? "Loading…" : "No data"}</div>
         )}
       </div>
     );
@@ -274,7 +280,7 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
   return (
     <div style={{ width: 7 * CELL_W + 6 * GAP }}>
       <div style={styles.weekRow}>
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
+        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((w) => (
           <div key={w} style={styles.weekHeader}>
             {w}
           </div>
@@ -290,7 +296,7 @@ const styles: Record<string, React.CSSProperties> = {
   controlsRow: {
     display: "flex",
     justifyContent: "center",
-    alignItems: "center",	
+    alignItems: "center",
     gap: 14,
     marginBottom: 18,
   },
@@ -353,15 +359,16 @@ const styles: Record<string, React.CSSProperties> = {
     boxSizing: "border-box",
   },
 
-dayCell: {
-  height: 128,
-  borderRadius: 14,
-  padding: "10px 12px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between", // ⬅️ kritik
-  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-},
+  dayCell: {
+    height: 128,
+    borderRadius: 14,
+    padding: "10px 12px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+    boxSizing: "border-box",
+  },
 
   dayLabelRow: {
     display: "flex",
@@ -370,7 +377,7 @@ dayCell: {
     gap: 10,
     marginBottom: 10,
   },
-  dayLabel: { fontWeight: 950, color: "#e7edf5" },
+  dayLabel: { fontWeight: 950, color: "#e7edf5", fontSize: 16 },
 
   todayPill: {
     fontSize: 11,
@@ -385,13 +392,13 @@ dayCell: {
     flex: "0 0 auto",
   },
 
-line: {
-  opacity: 0.9,
-  marginTop: 0,
-  fontSize: 12,     // ⬅️ en kritik
-  lineHeight: 1.3,  // ⬅️ üst–alt orantıyı çözer
-  color: "#e7edf5",
-},
+  line: {
+    opacity: 0.9,
+    marginTop: 0,
+    fontSize: 12,
+    lineHeight: 1.3,
+    color: "#e7edf5",
+  },
   pct: { marginTop: 10, fontWeight: 900, fontSize: 17 },
   noData: { opacity: 0.6, color: "#e7edf5" },
   noDataTitle: { marginTop: 6, fontWeight: 950, color: "#bfdbfe" },

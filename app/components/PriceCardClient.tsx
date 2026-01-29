@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type PriceResp = {
   symbol: string;
@@ -9,17 +9,13 @@ type PriceResp = {
   source: string;
 };
 
-type Variant = "card" | "inlinePrice" | "inlineUpdated";
-
-type Props = {
-  variant?: Variant;
-};
-
 function fmt(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-export default function PriceCardClient({ variant = "card" }: Props) {
+export default function PriceCardClient(props: { variant?: "card" | "inlinePrice" | "inlineUpdated" } = {}) {
+  const variant = props.variant ?? "card";
+
   const [p, setP] = useState<PriceResp | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -55,40 +51,31 @@ export default function PriceCardClient({ variant = "card" }: Props) {
     };
   }, []);
 
-  /* -------- INLINE VARIANTS -------- */
+  const priceText = p ? fmt(p.price) : "—";
+  const updatedText = p
+    ? new Date(p.updatedAtUTC).toISOString().slice(0, 16).replace("T", " ") + " UTC"
+    : "—";
 
   if (variant === "inlinePrice") {
-    return <>{p ? fmt(p.price) : "—"}</>;
+    return <span>{priceText}</span>;
   }
 
   if (variant === "inlineUpdated") {
     return (
-      <>
-        {p
-          ? new Date(p.updatedAtUTC)
-              .toISOString()
-              .slice(0, 16)
-              .replace("T", " ") + " UTC"
-          : "—"}
-        {err ? <span style={styles.err}> · {err}</span> : null}
-      </>
+      <span>
+        {updatedText}
+        {err ? <span style={{ color: "#fca5a5" }}> · {err}</span> : null}
+      </span>
     );
   }
 
-  /* -------- DEFAULT CARD -------- */
-
+  // default card (kept for safety)
   return (
     <div style={styles.priceCard}>
       <div style={styles.priceCardTitle}>Bitcoin Current Price</div>
-      <div style={styles.priceValue}>{p ? fmt(p.price) : "—"}</div>
+      <div style={styles.priceValue}>{priceText}</div>
       <div style={styles.priceUpdated}>
-        Updated:{" "}
-        {p
-          ? new Date(p.updatedAtUTC)
-              .toISOString()
-              .slice(0, 16)
-              .replace("T", " ") + " UTC"
-          : "—"}
+        Updated: {updatedText}
         {err ? <span style={styles.err}> · {err}</span> : null}
       </div>
     </div>
@@ -104,8 +91,8 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 320,
     boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
   },
-  priceCardTitle: { fontWeight: 700, opacity: 0.9, marginBottom: 6 },
-  priceValue: { fontSize: 32, fontWeight: 900 },
-  priceUpdated: { opacity: 0.75, marginTop: 4, fontSize: 12 },
+  priceCardTitle: { fontWeight: 700, opacity: 0.9, marginBottom: 10 },
+  priceValue: { fontSize: 34, fontWeight: 900, letterSpacing: 0.2 },
+  priceUpdated: { opacity: 0.75, marginTop: 6, fontSize: 12 },
   err: { color: "#fca5a5", opacity: 1 },
 };

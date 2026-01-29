@@ -47,8 +47,8 @@ export default function CalendarClient() {
   const [rows, setRows] = useState<CandleRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fit-to-viewport
-  const fitWrapRef = useRef<HTMLDivElement | null>(null);
+  // Fit-to-viewport (scale down only)
+  const fitOuterRef = useRef<HTMLDivElement | null>(null);
   const fitInnerRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
 
@@ -96,17 +96,21 @@ export default function CalendarClient() {
     } else setMonth(month + 1);
   }
 
+  // Recalc scale so calendar fits "above the fold"
   useEffect(() => {
     function recalc() {
-      const wrap = fitWrapRef.current;
+      const outer = fitOuterRef.current;
       const inner = fitInnerRef.current;
-      if (!wrap || !inner) return;
+      if (!outer || !inner) return;
 
-      const wrapRect = wrap.getBoundingClientRect();
-      const availW = wrapRect.width;
+      const outerRect = outer.getBoundingClientRect();
 
-      const topOffset = wrapRect.top;
-      const availH = window.innerHeight - topOffset - 20;
+      // Available area for the calendar (inside compact container)
+      const availW = outerRect.width;
+
+      // subtract a little for breathing room
+      const topOffset = outerRect.top;
+      const availH = window.innerHeight - topOffset - 16;
 
       // measure at scale=1
       inner.style.transform = "scale(1)";
@@ -126,8 +130,8 @@ export default function CalendarClient() {
   }, [year, month, rows.length]);
 
   return (
-    <section style={{ marginTop: 14 }}>
-      <div style={styles.navRow}>
+    <section style={styles.section}>
+      <div style={styles.topRow}>
         <button onClick={prev} style={styles.navBtn}>
           ‹ Prev
         </button>
@@ -176,16 +180,19 @@ export default function CalendarClient() {
         {loading ? <div style={styles.loading}>Loading…</div> : null}
       </div>
 
-      <div ref={fitWrapRef} style={styles.fitWrap}>
-        <div
-          ref={fitInnerRef}
-          style={{
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            width: "fit-content",
-          }}
-        >
-          <CalendarGrid year={year} month={month} rows={rows} />
+      {/* IMPORTANT: compact centered container (brings back side space) */}
+      <div style={styles.centerWrap}>
+        <div ref={fitOuterRef} style={styles.fitOuter}>
+          <div
+            ref={fitInnerRef}
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              width: "fit-content",
+            }}
+          >
+            <CalendarGrid year={year} month={month} rows={rows} />
+          </div>
         </div>
       </div>
     </section>
@@ -281,9 +288,8 @@ function CalendarGrid({
             </div>
           </>
         ) : isToday ? (
-          <>
-            <div style={styles.noDataTitle}>Today (in progress)</div>
-          </>
+          // Keep height consistent: no extra paragraphs, no long copy
+          <div style={styles.noDataTitle}>Today (in progress)</div>
         ) : (
           <div style={styles.noData}>No data</div>
         )}
@@ -294,7 +300,7 @@ function CalendarGrid({
   return (
     <div>
       <div style={styles.weekRow}>
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
+        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((w) => (
           <div key={w} style={styles.weekHeader}>
             {w}
           </div>
@@ -307,82 +313,95 @@ function CalendarGrid({
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  navRow: {
+  section: { marginTop: 10 },
+
+  topRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 10,
   },
   navBtn: {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     color: "#e7edf5",
-    padding: "10px 14px",
+    padding: "9px 13px",
     borderRadius: 12,
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: 800,
   },
   selectGroup: { display: "flex", gap: 10 },
   select: {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     color: "#e7edf5",
-    padding: "10px 12px",
+    padding: "9px 12px",
     borderRadius: 12,
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
   },
+
   monthTitleRow: {
     display: "flex",
     alignItems: "baseline",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   monthTitle: {
     fontSize: 28,
-    fontWeight: 900,
+    fontWeight: 950,
     letterSpacing: 0.2,
     color: "#e7edf5",
   },
   loading: { opacity: 0.7, color: "#e7edf5" },
 
-  fitWrap: {
+  // Centered, capped width -> brings back side spaces & stops "stretch"
+  centerWrap: {
+    width: "100%",
+    display: "flex",
+    justifyContent: "center",
+  },
+  fitOuter: {
     width: "100%",
     overflow: "hidden",
   },
 
   weekRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(7, 1fr)",
+    gridTemplateColumns: "repeat(7, minmax(140px, 1fr))",
     gap: 10,
     marginBottom: 8,
   },
   weekHeader: {
     opacity: 0.75,
-    fontWeight: 800,
+    fontWeight: 900,
     paddingLeft: 6,
     color: "#e7edf5",
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(7, minmax(150px, 1fr))",
+    gridTemplateColumns: "repeat(7, minmax(140px, 1fr))",
     gap: 10,
   },
 
+  // All cells identical height
   padCell: {
-    height: 128,
+    height: 120,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.08)",
     background: "rgba(255,255,255,0.02)",
   },
 
   dayCell: {
-    height: 128,
+    height: 120,
     borderRadius: 14,
     padding: 12,
     boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-start",
   },
 
   dayLabelRow: {
@@ -390,13 +409,13 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  dayLabel: { fontWeight: 900, color: "#e7edf5" },
+  dayLabel: { fontWeight: 950, color: "#e7edf5" },
 
   todayPill: {
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 950,
     letterSpacing: 0.6,
     padding: "4px 8px",
     borderRadius: 999,
@@ -406,8 +425,8 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
   },
 
-  line: { opacity: 0.9, marginTop: 2, color: "#e7edf5" },
-  pct: { marginTop: 10, fontWeight: 900, fontSize: 18 },
-  noData: { opacity: 0.6, color: "#e7edf5" },
-  noDataTitle: { marginTop: 6, fontWeight: 900, color: "#bfdbfe" },
+  line: { opacity: 0.9, marginTop: 2, color: "#e7edf5", fontSize: 13 },
+  pct: { marginTop: 8, fontWeight: 950, fontSize: 16 },
+  noData: { opacity: 0.6, color: "#e7edf5", fontSize: 13 },
+  noDataTitle: { marginTop: 6, fontWeight: 950, color: "#bfdbfe", fontSize: 13 },
 };

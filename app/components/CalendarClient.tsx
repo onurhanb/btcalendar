@@ -263,7 +263,7 @@ function CalendarGrid({ year, month, rows }: { year: number; month: number; rows
             </div>
           </>
         ) : isToday ? (
-          <div style={styles.noDataTitle}>Today (in progress)</div>
+          <div style={styles.noDataTitle}>in progress</div>
         ) : (
           <div style={styles.noData}>No data</div>
         )}
@@ -290,7 +290,7 @@ const styles: Record<string, React.CSSProperties> = {
   controlsRow: {
     display: "flex",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center",	
     gap: 14,
     marginBottom: 18,
   },
@@ -298,7 +298,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     color: "#e7edf5",
-    padding: "10px 14px",
+    padding: "8px 14px",
     borderRadius: 12,
     cursor: "pointer",
     fontWeight: 800,
@@ -313,7 +313,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     color: "#e7edf5",
-    padding: "10px 12px",
+    padding: "8px 12px",
     borderRadius: 12,
     fontWeight: 800,
     cursor: "pointer",

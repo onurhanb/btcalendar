@@ -46,8 +46,8 @@ export default function PriceCardClient() {
 
   return (
     <div style={styles.card}>
-      <div style={styles.title}>Bitcoin</div>
-      <div style={styles.price}>{priceText}</div>
+      <div style={styles.title}>₿itcoin Price</div>
+      <div style={styles.price}>${priceText}</div>
       <div style={styles.updated}>{updatedText}</div>
     </div>
   );
@@ -58,12 +58,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.12)",
     background: "rgba(0,0,0,0.25)",
     borderRadius: 12,
-    padding: "10px 14px",
+    padding: "4px 10px",
     minWidth: 220,
     textAlign: "right",
   },
   title: {
-    fontSize: 12,
+    fontSize: 14,
     opacity: 0.75,
     fontWeight: 800,
   },
@@ -71,10 +71,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 24,
     fontWeight: 900,
     letterSpacing: 0.2,
+    marginTop: -2,
   },
   updated: {
     fontSize: 11,
     opacity: 0.65,
-    marginTop: 2,
+    marginTop: 0,
   },
 };

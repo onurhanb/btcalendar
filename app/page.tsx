@@ -58,7 +58,7 @@ const styles: Record<string, React.CSSProperties> = {
   topBarWrap: {
     display: "flex",
     justifyContent: "center",
-    marginBottom: 28,
+    marginBottom: 10,
   },
 
   topBar: {

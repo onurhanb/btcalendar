@@ -6,21 +6,16 @@ import PriceCardClient from "./PriceCardClient";
 import { CAL_W } from "./CalendarClient";
 
 const styles: Record<string, React.CSSProperties> = {
-  topBarFrame: {
+  // TOPBAR: her zaman takvim genişliğinde ve ortada
+  wrap: {
+    width: CAL_W,
     margin: "0 auto",
-    width: "100%",
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr", // sol / orta / sağ
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 18,
   },
-
-topBar: {
-  width: CAL_W,        // 🔥 takvimle birebir
-  margin: "0 auto",    // 🔥 ortala
-  display: "grid",
-  gridTemplateColumns: "1fr auto 1fr",
-  alignItems: "center",
-  gap: 16,
-  marginBottom: 18,
-},
-
 
   left: {
     display: "flex",
@@ -28,7 +23,6 @@ topBar: {
     gap: 12,
     minWidth: 0,
   },
-
   brandIcon: {
     width: 44,
     height: 44,
@@ -41,22 +35,12 @@ topBar: {
     fontSize: 20,
     flex: "0 0 auto",
   },
-
   brandText: { display: "flex", flexDirection: "column", gap: 4 },
   brandName: { fontSize: 20, fontWeight: 900 },
   brandMeta: { opacity: 0.75, fontSize: 13 },
 
-  center: {
-    display: "flex",
-    justifyContent: "center",
-  },
-
-  nav: {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-  },
-
+  center: { display: "flex", justifyContent: "center" },
+  nav: { display: "flex", gap: 10, alignItems: "center" },
   navLink: {
     padding: "8px 10px",
     borderRadius: 10,
@@ -68,17 +52,13 @@ topBar: {
     fontSize: 13,
     transition: "all 0.18s ease",
   },
-
   navLinkActive: {
     color: "#e7edf5",
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(255,255,255,0.06)",
   },
 
-  right: {
-    display: "flex",
-    justifyContent: "flex-end",
-  },
+  right: { display: "flex", justifyContent: "flex-end" },
 };
 
 function NavItem({ href, label }: { href: string; label: string }) {
@@ -110,29 +90,27 @@ function NavItem({ href, label }: { href: string; label: string }) {
   );
 }
 
-export default function TopBar({ width }: { width: number }) {
+export default function TopBar() {
   return (
-    <div style={{ ...styles.topBarFrame, maxWidth: width }}>
-      <div style={styles.topBar}>
-        <div style={styles.left}>
-          <div style={styles.brandIcon}>₿</div>
-          <div style={styles.brandText}>
-            <div style={styles.brandName}>BTCalendar</div>
-            <div style={styles.brandMeta}>Track Bitcoin daily prices.</div>
-          </div>
+    <div style={styles.wrap}>
+      <div style={styles.left}>
+        <div style={styles.brandIcon}>₿</div>
+        <div style={styles.brandText}>
+          <div style={styles.brandName}>BTCalendar</div>
+          <div style={styles.brandMeta}>Track Bitcoin daily prices.</div>
         </div>
+      </div>
 
-        <div style={styles.center}>
-          <nav style={styles.nav}>
-            <NavItem href="/" label="Home" />
-            <NavItem href="/about" label="About" />
-            <NavItem href="/blog" label="Blog" />
-          </nav>
-        </div>
+      <div style={styles.center}>
+        <nav style={styles.nav}>
+          <NavItem href="/" label="Home" />
+          <NavItem href="/about" label="About" />
+          <NavItem href="/blog" label="Blog" />
+        </nav>
+      </div>
 
-        <div style={styles.right}>
-          <PriceCardClient />
-        </div>
+      <div style={styles.right}>
+        <PriceCardClient />
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 // app/blog/[slug]/page.tsx
 import { posts } from "../posts";
 import { notFound } from "next/navigation";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 export const dynamicParams = false;
 
@@ -8,13 +10,44 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return posts.map((post) => ({ slug: post.slug }));
 }
 
-// params bazen Promise gelebiliyor → unwrap
 async function unwrapParams(
   params: { slug?: string } | Promise<{ slug?: string }>
 ) {
   // @ts-ignore
   if (params && typeof (params as any).then === "function") return await params;
   return params as { slug?: string };
+}
+
+// Basit, minimal “markdown to HTML” (başlangıç için)
+// Sonra istersen MDX/remark ekleriz.
+function mdToHtml(md: string) {
+  const esc = (s: string) =>
+    s
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+  const lines = md.split("\n");
+
+  const html = lines
+    .map((line) => {
+      const l = line.trimEnd();
+
+      // headings
+      if (l.startsWith("### ")) return `<h3>${esc(l.slice(4))}</h3>`;
+      if (l.startsWith("## ")) return `<h2>${esc(l.slice(3))}</h2>`;
+      if (l.startsWith("# ")) return `<h1>${esc(l.slice(2))}</h1>`;
+
+      // blank
+      if (!l.trim()) return "";
+
+      // paragraphs
+      return `<p>${esc(l)}</p>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  return html;
 }
 
 export default async function BlogPostPage({
@@ -25,40 +58,34 @@ export default async function BlogPostPage({
   const resolved = await unwrapParams(params);
   const raw = resolved?.slug;
 
-  if (!raw) {
-    if (process.env.NODE_ENV !== "production") {
-      return (
-        <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 0" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900 }}>
-            DEBUG: slug is missing
-          </h1>
-          <pre style={{ opacity: 0.8, marginTop: 12 }}>
-            {JSON.stringify(
-              { receivedParams: resolved, availableSlugs: posts.map((p) => p.slug) },
-              null,
-              2
-            )}
-          </pre>
-        </main>
-      );
-    }
-    notFound();
-  }
+  if (!raw) notFound();
 
   const slug = decodeURIComponent(String(raw));
   const post = posts.find((p) => p.slug === slug);
   if (!post) notFound();
 
+  // app/blog/content/<slug>.md
+  const mdPath = path.join(process.cwd(), "app", "blog", "content", `${slug}.md`);
+
+  let md = "";
+  try {
+    md = await fs.readFile(mdPath, "utf8");
+  } catch {
+    // md dosyası yoksa 404 (veya istersen fallback lorem)
+    notFound();
+  }
+
+  const html = mdToHtml(md);
+
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "24px 0" }}>
-      {/* Blog/About ile aynı “başlık bandı” hizası */}
       <header style={{ marginBottom: 16 }}>
         <h1
           style={{
-            fontSize: 28, // Blog/About ile aynı
+            fontSize: 28,
             fontWeight: 900,
             marginBottom: 10,
-            textAlign: "center", // Blog/About gibi ortalı
+            textAlign: "center",
           }}
         >
           {post.title}
@@ -69,14 +96,10 @@ export default async function BlogPostPage({
         </p>
       </header>
 
-      <article style={{ lineHeight: 1.7, opacity: 0.85 }}>
-        <p>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-          tempor incididunt ut labore et dolore magna aliqua.
-        </p>
-        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
-        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum.</p>
-      </article>
+      <article
+        style={{ lineHeight: 1.7, opacity: 0.9 }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </main>
   );
 }

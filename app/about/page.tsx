@@ -1,8 +1,9 @@
+// app/about/page.tsx
 export default function AboutPage() {
   return (
     <main
       style={{
-        padding: "0px 0",
+        padding: "24px 0", // Blog ile aynı hizaya getirir
         display: "flex",
         justifyContent: "center",
       }}
@@ -27,18 +28,16 @@ export default function AboutPage() {
           }}
         >
           BTCalendar presents Bitcoin (BTC/USDT) daily price action in a clean,
-          calendar-based layout. Each day represents a single daily candle derived
-          from Binance spot market data, using UTC time (00:00–23:59).
-
-          <br /><br />
-
-          The goal of BTCalendar is simplicity: removing noisy charts and focusing
-          purely on daily structure, momentum, and context. This makes it easier
-          to spot patterns, streaks, volatility clusters, and behavioral market
-          phases at a glance.
-
-          <br /><br />
-
+          calendar-based layout. Each day represents a single daily candle
+          derived from Binance spot market data, using UTC time (00:00–23:59).
+          <br />
+          <br />
+          The goal of BTCalendar is simplicity: removing noisy charts and
+          focusing purely on daily structure, momentum, and context. This makes
+          it easier to spot patterns, streaks, volatility clusters, and
+          behavioral market phases at a glance.
+          <br />
+          <br />
           All price data is fetched directly from Binance daily candles. Open and
           Close values correspond to the candle’s opening and closing prices for
           each day.

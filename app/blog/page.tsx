@@ -1,38 +1,49 @@
-const posts = [
-  { slug: "what-is-a-bitcoin-candle", title: "What is a Bitcoin candle?", excerpt: "Open, close, and daily change explained." },
-  { slug: "btc-calendar-strategy", title: "Using a calendar view for BTC", excerpt: "Why month-based views help spotting regimes." },
-  { slug: "utc-vs-local-time", title: "UTC vs local time in crypto charts", excerpt: "Why your day boundaries matter." },
-];
+// app/blog/page.tsx
+import Link from "next/link";
+import { posts } from "./posts";
 
 export default function BlogPage() {
+  const sorted = [...posts].sort(
+    (a, b) => +new Date(b.date) - +new Date(a.date)
+  );
+
   return (
-    <main style={{ padding: "14px 0" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 14 }}>Blog</h1>
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 0" }}>
+<h1
+  style={{
+    fontSize: 28,
+    fontWeight: 900,
+    marginBottom: 18,
+    textAlign: "center",
+  }}
+>
+  Blog
+</h1>
+
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: 12,
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: 16,
         }}
       >
-        {posts.map((p) => (
-          <a
+        {sorted.map((p) => (
+          <Link
             key={p.slug}
-            href={`/blog/${p.slug}`}
+            href={`/blog/${encodeURIComponent(p.slug)}`}
             style={{
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              borderRadius: 14,
+              padding: 16,
               textDecoration: "none",
               color: "#e7edf5",
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(0,0,0,0.18)",
-              borderRadius: 14,
-              padding: 14,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
             }}
           >
             <div style={{ fontWeight: 900, marginBottom: 6 }}>{p.title}</div>
-            <div style={{ opacity: 0.75, lineHeight: 1.5 }}>{p.excerpt}</div>
-          </a>
+            <div style={{ opacity: 0.7, fontSize: 13 }}>{p.excerpt}</div>
+          </Link>
         ))}
       </div>
     </main>

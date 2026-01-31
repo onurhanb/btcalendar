@@ -1,8 +1,33 @@
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+## Daily Close Strategy
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Many traders ignore intraday noise and focus only on the daily close.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Why?
+
+Because the close represents the final decision of the market.
+
+## Strategy basics
+
+Rules example:
+
+- buy after strong green close
+- sell after breakdown close
+- avoid midday noise
+
+## Benefits
+
+- fewer trades
+- lower stress
+- clearer signals
+
+## Combine with calendar
+
+Use BTCalendar to instantly see:
+
+- streaks
+- reversals
+- breakouts
+
+## Try it live
+
+See daily closes visually on the [Home page](/).

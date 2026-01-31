@@ -3,8 +3,30 @@ import TopBar from "./components/TopBar";
 import { CAL_W } from "./components/CalendarClient";
 
 export const metadata: Metadata = {
-  title: "BTCalendar | Track Bitcoin daily prices.",
-  description: "Track Bitcoin daily prices.",
+  metadataBase: new URL("https://btcalendar.vercel.app"),
+
+  title: {
+    default: "BTCalendar – Bitcoin Daily Price Calendar",
+    template: "%s | BTCalendar",
+  },
+  description:
+    "Track Bitcoin daily prices with a clean calendar view. Spot trends, streaks and volatility without noisy charts.",
+
+  openGraph: {
+    title: "BTCalendar – Bitcoin Daily Price Calendar",
+    description:
+      "Track Bitcoin daily prices with a clean calendar view. Spot trends, streaks and volatility without noisy charts.",
+    url: "https://btcalendar.vercel.app",
+    siteName: "BTCalendar",
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "BTCalendar – Bitcoin Daily Price Calendar",
+    description:
+      "Track Bitcoin daily prices with a clean calendar view. Spot trends, streaks and volatility without noisy charts.",
+  },
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -14,11 +36,9 @@ const styles: Record<string, React.CSSProperties> = {
       "radial-gradient(1200px 600px at 30% 0%, #1a2230 0%, #0b0f16 55%, #06080c 100%)",
     color: "#e7edf5",
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
-    // önemli: dar ekranda yatay scroll olmasın
     overflowX: "hidden",
   },
 
-  // dış sarmal: her şeyi ortalar
   outer: {
     width: "100%",
     display: "flex",
@@ -27,10 +47,9 @@ const styles: Record<string, React.CSSProperties> = {
     boxSizing: "border-box",
   },
 
-  // frame: TopBar + sayfa içeriği + footer'ın ortak genişliği
   shell: {
-    width: CAL_W,       // 🔥 takvimle birebir aynı
-    maxWidth: "100%",   // 🔥 ekran daralınca küçülebilsin
+    width: CAL_W,
+    maxWidth: "100%",
   },
 
   footer: {
@@ -53,12 +72,12 @@ export default function RootLayout({
           <div style={styles.shell}>
             <TopBar />
 
-            {/* SADECE BURASI DEĞİŞİR */}
             {children}
 
             <footer style={styles.footer}>
-              Prices are derived from Binance BTCUSDT daily candles (UTC 00:00–23:59).
-              Open and Close correspond to the candle’s open and close.
+              Prices are derived from Binance BTCUSDT daily candles (UTC
+              00:00–23:59). Open and Close correspond to the candle’s open and
+              close.
             </footer>
           </div>
         </div>

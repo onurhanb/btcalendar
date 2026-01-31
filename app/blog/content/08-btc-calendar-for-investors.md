@@ -1,8 +1,27 @@
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+## BTC Calendar for Investors
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Not everyone day trades.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Investors need clarity, not complexity.
+
+## Why this tool fits investors
+
+You don’t need indicators.
+
+You need:
+
+- monthly context
+- trend awareness
+- emotional discipline
+
+## Calendar advantages
+
+- reduces noise
+- improves patience
+- highlights macro trends
+
+## How to use
+
+Check the calendar weekly instead of charts daily.
+
+See it live on the [Home page](/).
